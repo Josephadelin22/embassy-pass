@@ -14,16 +14,221 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      check_ins: {
+        Row: {
+          agent_id: string | null
+          device_info: string | null
+          id: string
+          invitation_id: string
+          scanned_at: string
+        }
+        Insert: {
+          agent_id?: string | null
+          device_info?: string | null
+          id?: string
+          invitation_id: string
+          scanned_at?: string
+        }
+        Update: {
+          agent_id?: string | null
+          device_info?: string | null
+          id?: string
+          invitation_id?: string
+          scanned_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "check_ins_invitation_id_fkey"
+            columns: ["invitation_id"]
+            isOneToOne: false
+            referencedRelation: "invitations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      invitations: {
+        Row: {
+          created_by: string | null
+          generated_at: string
+          id: string
+          participant_id: string
+          signature: string
+          status: Database["public"]["Enums"]["invitation_status"]
+          used_at: string | null
+          uuid_secret: string
+        }
+        Insert: {
+          created_by?: string | null
+          generated_at?: string
+          id?: string
+          participant_id: string
+          signature: string
+          status?: Database["public"]["Enums"]["invitation_status"]
+          used_at?: string | null
+          uuid_secret?: string
+        }
+        Update: {
+          created_by?: string | null
+          generated_at?: string
+          id?: string
+          participant_id?: string
+          signature?: string
+          status?: Database["public"]["Enums"]["invitation_status"]
+          used_at?: string | null
+          uuid_secret?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invitations_participant_id_fkey"
+            columns: ["participant_id"]
+            isOneToOne: false
+            referencedRelation: "participants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      participants: {
+        Row: {
+          category: Database["public"]["Enums"]["participant_category"]
+          created_at: string
+          created_by: string | null
+          email: string | null
+          full_name: string
+          id: string
+          notes: string | null
+          organization: string | null
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          category?: Database["public"]["Enums"]["participant_category"]
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          full_name: string
+          id?: string
+          notes?: string | null
+          organization?: string | null
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          category?: Database["public"]["Enums"]["participant_category"]
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          full_name?: string
+          id?: string
+          notes?: string | null
+          organization?: string | null
+          phone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          email: string | null
+          full_name: string | null
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      transactions: {
+        Row: {
+          amount: number
+          created_at: string
+          created_by: string | null
+          currency: string
+          id: string
+          invitation_id: string
+          payment_date: string
+          payment_method: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          id?: string
+          invitation_id: string
+          payment_date?: string
+          payment_method?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          id?: string
+          invitation_id?: string
+          payment_date?: string
+          payment_method?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transactions_invitation_id_fkey"
+            columns: ["invitation_id"]
+            isOneToOne: false
+            referencedRelation: "invitations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "agent" | "viewer"
+      invitation_status: "actif" | "utilise" | "annule"
+      participant_category: "vip" | "visiteur" | "exposant"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +355,10 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "agent", "viewer"],
+      invitation_status: ["actif", "utilise", "annule"],
+      participant_category: ["vip", "visiteur", "exposant"],
+    },
   },
 } as const
