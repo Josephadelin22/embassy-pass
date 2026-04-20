@@ -33,8 +33,7 @@ export async function generateBadgeQR(payload: string, theme: QrTheme = {}): Pro
     backgroundOptions: { color: "#ffffff" },
   });
 
-  // @ts-expect-error - lib accepts canvas creation in browser env
-  const blob: Blob = await qr.getRawData("png");
+  const blob = (await qr.getRawData("png")) as Blob;
   return await blobToDataURL(blob);
 }
 
