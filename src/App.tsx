@@ -7,6 +7,8 @@ import Index from "./pages/Index.tsx";
 import NotFound from "./pages/NotFound.tsx";
 import Auth from "./pages/Auth.tsx";
 import Admin from "./pages/Admin.tsx";
+import Participants from "./pages/Participants.tsx";
+import NewParticipant from "./pages/NewParticipant.tsx";
 import Scan from "./pages/Scan.tsx";
 import { ProtectedRoute } from "./components/ProtectedRoute.tsx";
 
@@ -26,6 +28,22 @@ const App = () => (
             element={
               <ProtectedRoute requireRole="admin">
                 <Admin />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/participants"
+            element={
+              <ProtectedRoute requireRole="admin">
+                <Participants />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/participants/new"
+            element={
+              <ProtectedRoute requireRole="admin">
+                <NewParticipant />
               </ProtectedRoute>
             }
           />
