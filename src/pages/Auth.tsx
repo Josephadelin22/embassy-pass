@@ -13,13 +13,15 @@ import { Loader2 } from "lucide-react";
 
 export default function Auth() {
   const navigate = useNavigate();
-  const { user, loading } = useAuth();
+  const { user, loading, isAdmin, isAgent } = useAuth();
   const [busy, setBusy] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
 
-  if (!loading && user) return <Navigate to="/" replace />;
+  if (!loading && user) {
+    return <Navigate to={isAdmin ? "/admin" : isAgent ? "/scan" : "/"} replace />;
+  }
 
   async function handleSignIn(e: React.FormEvent) {
     e.preventDefault();
@@ -28,7 +30,6 @@ export default function Auth() {
     setBusy(false);
     if (error) return toast.error(error.message);
     toast.success("Connexion réussie");
-    navigate("/");
   }
 
   async function handleSignUp(e: React.FormEvent) {
@@ -44,7 +45,8 @@ export default function Auth() {
     });
     setBusy(false);
     if (error) return toast.error(error.message);
-    toast.success("Compte créé. Vous pouvez vous connecter.");
+    toast.success("Compte créé. Vérifiez votre email puis connectez-vous.");
+    navigate("/auth");
   }
 
   return (
