@@ -11,34 +11,49 @@ export function useAuth() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Listener FIRST
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, sess) => {
+    let mounted = true;
+
+    async function syncAuth(sess: Session | null) {
+      if (!mounted) return;
+      setLoading(true);
       setSession(sess);
       setUser(sess?.user ?? null);
-      if (sess?.user) {
-        // defer to avoid deadlock
-        setTimeout(() => fetchRoles(sess.user.id), 0);
-      } else {
+
+      if (!sess?.user) {
         setRoles([]);
+        if (mounted) setLoading(false);
+        return;
       }
+
+      const nextRoles = await fetchRoles(sess.user.id);
+      if (!mounted) return;
+      setRoles(nextRoles);
+      setLoading(false);
+    }
+
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, sess) => {
+      setTimeout(() => {
+        void syncAuth(sess);
+      }, 0);
     });
 
     supabase.auth.getSession().then(({ data: { session: sess } }) => {
-      setSession(sess);
-      setUser(sess?.user ?? null);
-      if (sess?.user) fetchRoles(sess.user.id);
-      setLoading(false);
+      void syncAuth(sess);
     });
 
-    return () => sub.subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      sub.subscription.unsubscribe();
+    };
   }, []);
 
-  async function fetchRoles(userId: string) {
+  async function fetchRoles(userId: string): Promise<AppRole[]> {
     const { data } = await supabase
       .from("user_roles")
       .select("role")
       .eq("user_id", userId);
-    setRoles((data?.map((r) => r.role) as AppRole[]) ?? []);
+
+    return (data?.map((r) => r.role) as AppRole[]) ?? [];
   }
 
   const hasRole = (r: AppRole) => roles.includes(r);

@@ -10,8 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Loader2, Download, ArrowLeft, CheckCircle2 } from "lucide-react";
-import { generateBadgeQR, generateBadgePDF, downloadBlob } from "@/lib/qr";
+import { Loader2, Download, ArrowLeft, CheckCircle2, Image as ImageIcon, FileDown } from "lucide-react";
+import { generateBadgeQR, generateBadgePDF, downloadBlob, downloadDataUrl } from "@/lib/qr";
 
 const Schema = z.object({
   full_name: z.string().trim().min(2, "Nom trop court").max(120),
@@ -75,7 +75,7 @@ export default function NewParticipant() {
     }
   }
 
-  async function download() {
+  async function downloadPdf() {
     if (!done) return;
     const pdf = await generateBadgePDF({
       qrDataUrl: done.qr,
@@ -85,6 +85,11 @@ export default function NewParticipant() {
       reference: done.ref,
     });
     downloadBlob(pdf, `badge-${done.name.replace(/\s+/g, "-")}.pdf`);
+  }
+
+  function downloadPng() {
+    if (!done) return;
+    downloadDataUrl(done.qr, `badge-${done.name.replace(/\s+/g, "-")}.png`);
   }
 
   if (done) {
@@ -98,16 +103,19 @@ export default function NewParticipant() {
             <h2 className="text-2xl font-display font-bold mb-2">Invitation créée</h2>
             <p className="text-sm text-muted-foreground mb-6">{done.name}</p>
             <div className="bg-white p-4 rounded-xl border border-border inline-block mb-6">
-              <img src={done.qr} alt="QR" className="w-56 h-56" />
+              <img src={done.qr} alt="QR de l'invitation" className="w-56 h-56" />
             </div>
-            <div className="flex flex-col gap-2">
-              <Button onClick={download} size="lg" className="bg-gradient-gold text-accent-foreground hover:opacity-90 shadow-gold">
-                <Download className="h-4 w-4 mr-2" />Télécharger le badge PDF
+            <div className="grid gap-2 sm:grid-cols-2">
+              <Button onClick={downloadPdf} size="lg" className="bg-gradient-gold text-accent-foreground hover:opacity-90 shadow-gold">
+                <FileDown className="h-4 w-4 mr-2" />PDF
               </Button>
-              <Button variant="outline" onClick={() => { setDone(null); setForm({ ...form, full_name: "", email: "", phone: "", organization: "", notes: "" }); }}>
+              <Button onClick={downloadPng} size="lg" variant="outline">
+                <ImageIcon className="h-4 w-4 mr-2" />PNG
+              </Button>
+              <Button variant="outline" className="sm:col-span-2" onClick={() => { setDone(null); setForm({ ...form, full_name: "", email: "", phone: "", organization: "", notes: "" }); }}>
                 Créer un autre invité
               </Button>
-              <Button variant="ghost" onClick={() => nav("/admin/participants")}>Voir la liste</Button>
+              <Button variant="ghost" className="sm:col-span-2" onClick={() => nav("/admin/participants")}>Voir la liste</Button>
             </div>
           </Card>
         </div>
@@ -143,16 +151,16 @@ export default function NewParticipant() {
                 <Label>Catégorie *</Label>
                 <Select
                   value={form.category}
-                  onValueChange={(v: any) => {
+                  onValueChange={(v: "vip" | "visiteur" | "exposant") => {
                     update("category", v);
-                    update("amount", presets[v as keyof typeof presets]);
+                    update("amount", presets[v]);
                   }}
                 >
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="vip">VIP — 5 000 XAF</SelectItem>
                     <SelectItem value="visiteur">Visiteur — 3 000 XAF</SelectItem>
-                    <SelectItem value="exposant">Exposant</SelectItem>
+                    <SelectItem value="exposant">Exposant — Gratuit</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

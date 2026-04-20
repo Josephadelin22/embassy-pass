@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AdminShell } from "@/components/AdminShell";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
@@ -6,8 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router-dom";
-import { Plus, Search, Download, QrCode, CheckCircle2, Clock } from "lucide-react";
-import { generateBadgeQR, generateBadgePDF, downloadBlob } from "@/lib/qr";
+import { Plus, Search, Download, QrCode, CheckCircle2, Clock, Image as ImageIcon, FileDown } from "lucide-react";
+import { generateBadgeQR, generateBadgePDF, downloadBlob, downloadDataUrl } from "@/lib/qr";
 import { toast } from "sonner";
 
 type Row = {
@@ -20,6 +20,9 @@ type Row = {
   invitation: { id: string; uuid_secret: string; signature: string; status: string } | null;
 };
 
+type CategoryFilter = "all" | "vip" | "visiteur" | "exposant";
+type StatusFilter = "all" | "actif" | "utilise";
+
 const catColor: Record<string, string> = {
   vip: "bg-gradient-gold text-accent-foreground",
   visiteur: "bg-primary/10 text-primary",
@@ -29,10 +32,12 @@ const catColor: Record<string, string> = {
 export default function Participants() {
   const [rows, setRows] = useState<Row[]>([]);
   const [q, setQ] = useState("");
+  const [category, setCategory] = useState<CategoryFilter>("all");
+  const [status, setStatus] = useState<StatusFilter>("all");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { void load(); }, []);
 
   async function load() {
     setLoading(true);
@@ -45,23 +50,42 @@ export default function Participants() {
     setLoading(false);
   }
 
+  const counts = useMemo(() => ({
+    all: rows.length,
+    vip: rows.filter((r) => r.category === "vip").length,
+    visiteur: rows.filter((r) => r.category === "visiteur").length,
+    exposant: rows.filter((r) => r.category === "exposant").length,
+    actif: rows.filter((r) => r.invitation?.status !== "utilise").length,
+    utilise: rows.filter((r) => r.invitation?.status === "utilise").length,
+  }), [rows]);
+
   const filtered = rows.filter((r) => {
-    if (!q.trim()) return true;
-    const s = q.toLowerCase();
-    return (
+    const s = q.trim().toLowerCase();
+    const matchesSearch = !s || (
       r.full_name.toLowerCase().includes(s) ||
       r.email?.toLowerCase().includes(s) ||
       r.phone?.toLowerCase().includes(s) ||
       r.organization?.toLowerCase().includes(s)
     );
+
+    const matchesCategory = category === "all" || r.category === category;
+    const invitationStatus = r.invitation?.status === "utilise" ? "utilise" : "actif";
+    const matchesStatus = status === "all" || invitationStatus === status;
+
+    return matchesSearch && matchesCategory && matchesStatus;
   });
 
-  async function downloadBadge(r: Row) {
+  async function buildQr(r: Row) {
+    if (!r.invitation) throw new Error("Pas d'invitation");
+    const payload = `${r.invitation.uuid_secret}.${r.invitation.signature}`;
+    return generateBadgeQR(payload);
+  }
+
+  async function downloadPdf(r: Row) {
     if (!r.invitation) return toast.error("Pas d'invitation");
-    setBusy(r.id);
+    setBusy(`${r.id}-pdf`);
     try {
-      const payload = `${r.invitation.uuid_secret}.${r.invitation.signature}`;
-      const qr = await generateBadgeQR(payload);
+      const qr = await buildQr(r);
       const pdf = await generateBadgePDF({
         qrDataUrl: qr,
         fullName: r.full_name,
@@ -70,9 +94,21 @@ export default function Participants() {
         reference: r.invitation.id,
       });
       downloadBlob(pdf, `badge-${r.full_name.replace(/\s+/g, "-")}.pdf`);
-    } catch (e) {
-      toast.error("Erreur génération badge");
-      console.error(e);
+    } catch {
+      toast.error("Erreur génération badge PDF");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function downloadPng(r: Row) {
+    if (!r.invitation) return toast.error("Pas d'invitation");
+    setBusy(`${r.id}-png`);
+    try {
+      const qr = await buildQr(r);
+      downloadDataUrl(qr, `badge-${r.full_name.replace(/\s+/g, "-")}.png`);
+    } catch {
+      toast.error("Erreur génération badge PNG");
     } finally {
       setBusy(null);
     }
@@ -83,14 +119,14 @@ export default function Participants() {
       <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
         <div>
           <h1 className="text-3xl font-display font-bold">Participants</h1>
-          <p className="text-sm text-muted-foreground">{rows.length} invités enregistrés</p>
+          <p className="text-sm text-muted-foreground">{filtered.length} résultat{filtered.length > 1 ? "s" : ""} sur {rows.length}</p>
         </div>
         <Button asChild className="bg-gradient-gold text-accent-foreground hover:opacity-90 shadow-gold">
           <Link to="/admin/participants/new"><Plus className="h-4 w-4 mr-2" />Nouvel invité</Link>
         </Button>
       </div>
 
-      <Card className="p-4 mb-4 shadow-card">
+      <Card className="p-4 mb-4 shadow-card space-y-4">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
@@ -100,6 +136,45 @@ export default function Participants() {
             className="pl-9"
           />
         </div>
+
+        <div className="space-y-3">
+          <div className="flex flex-wrap gap-2">
+            {[
+              ["all", `Toutes (${counts.all})`],
+              ["vip", `VIP (${counts.vip})`],
+              ["visiteur", `Visiteurs (${counts.visiteur})`],
+              ["exposant", `Exposants (${counts.exposant})`],
+            ].map(([value, label]) => (
+              <Button
+                key={value}
+                type="button"
+                size="sm"
+                variant={category === value ? "default" : "outline"}
+                onClick={() => setCategory(value as CategoryFilter)}
+              >
+                {label}
+              </Button>
+            ))}
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            {[
+              ["all", `Tous les statuts (${counts.all})`],
+              ["actif", `En attente (${counts.actif})`],
+              ["utilise", `Présents (${counts.utilise})`],
+            ].map(([value, label]) => (
+              <Button
+                key={value}
+                type="button"
+                size="sm"
+                variant={status === value ? "secondary" : "outline"}
+                onClick={() => setStatus(value as StatusFilter)}
+              >
+                {label}
+              </Button>
+            ))}
+          </div>
+        </div>
       </Card>
 
       <Card className="shadow-card overflow-hidden">
@@ -108,12 +183,12 @@ export default function Participants() {
         ) : filtered.length === 0 ? (
           <div className="p-12 text-center text-muted-foreground">
             <QrCode className="h-12 w-12 mx-auto mb-3 opacity-30" />
-            <p>Aucun participant {q ? "trouvé" : "encore enregistré"}.</p>
+            <p>Aucun participant trouvé avec ces filtres.</p>
           </div>
         ) : (
           <div className="divide-y divide-border">
             {filtered.map((r) => (
-              <div key={r.id} className="p-4 flex items-center gap-4 hover:bg-muted/30 transition-smooth">
+              <div key={r.id} className="p-4 flex flex-col gap-3 md:flex-row md:items-center md:gap-4 hover:bg-muted/30 transition-smooth">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-semibold truncate">{r.full_name}</span>
@@ -132,15 +207,26 @@ export default function Participants() {
                     {[r.email, r.phone, r.organization].filter(Boolean).join(" · ") || "—"}
                   </div>
                 </div>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={busy === r.id || !r.invitation}
-                  onClick={() => downloadBadge(r)}
-                >
-                  <Download className="h-4 w-4 mr-2" />
-                  {busy === r.id ? "..." : "Badge"}
-                </Button>
+                <div className="flex flex-wrap gap-2 md:justify-end">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={busy !== null || !r.invitation}
+                    onClick={() => void downloadPng(r)}
+                  >
+                    <ImageIcon className="h-4 w-4 mr-2" />
+                    {busy === `${r.id}-png` ? "..." : "PNG"}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={busy !== null || !r.invitation}
+                    onClick={() => void downloadPdf(r)}
+                  >
+                    <FileDown className="h-4 w-4 mr-2" />
+                    {busy === `${r.id}-pdf` ? "..." : "PDF"}
+                  </Button>
+                </div>
               </div>
             ))}
           </div>
