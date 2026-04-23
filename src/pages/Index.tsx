@@ -51,7 +51,7 @@ const Index = () => {
             </div>
             <h1 className="text-4xl md:text-6xl font-display font-bold leading-[1.05] mb-6">
               Contrôle d'accès <span className="text-accent">premium</span><br />
-              par INOV E-TECH
+              par INOV E-TECH .L Ltd
             </h1>
             <p className="text-lg text-primary-foreground/80 mb-8 max-w-xl">
               Génération d'invitations sécurisées, scan QR temps réel et synchronisation cloud.
@@ -137,7 +137,7 @@ const Index = () => {
 
       <footer className="border-t border-border/60 py-8">
         <div className="container text-center text-xs text-muted-foreground">
-          © {new Date().getFullYear()} INOV E-TECH .L — Tous droits réservés
+          © 2026 INOV E-TECH .L Ltd — Tous droits réservés
         </div>
       </footer>
     </div>

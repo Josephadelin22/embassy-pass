@@ -73,7 +73,7 @@ export async function generateBadgePDF(input: BadgePdfInput): Promise<Blob> {
   doc.setTextColor(255, 255, 255);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(14);
-  doc.text("INOV E-TECH", W / 2, 13, { align: "center" });
+  doc.text("INOV E-TECH .L Ltd", W / 2, 13, { align: "center" });
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8);
   doc.text("BADGE D'ACCÈS OFFICIEL", W / 2, 21, { align: "center" });

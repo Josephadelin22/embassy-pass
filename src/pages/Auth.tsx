@@ -113,7 +113,7 @@ export default function Auth() {
         </Card>
 
         <p className="text-center text-xs text-muted-foreground mt-6">
-          Powered by INOV E-TECH .L
+          Powered by INOV E-TECH .L Ltd
         </p>
       </div>
     </div>
