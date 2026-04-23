@@ -50,8 +50,7 @@ const Index = () => {
               <ShieldCheck className="h-3 w-3" /> Foire Ambassade du Gabon
             </div>
             <h1 className="text-4xl md:text-6xl font-display font-bold leading-[1.05] mb-6">
-              <span className="text-accent">IN-ACCESS</span> Contrôle d'accès premium<br />
-              par INOV E-TECH .L Ltd
+              <span className="text-accent">IN-ACCESS</span> Contrôle d'accès premium
             </h1>
             <div className="flex flex-wrap gap-3">
               <Button asChild size="lg" className="bg-accent text-accent-foreground hover:bg-accent-glow shadow-gold">
