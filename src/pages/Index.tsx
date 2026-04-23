@@ -58,26 +58,22 @@ const Index = () => {
               Une expérience digne d'un événement officiel.
             </p>
             <div className="flex flex-wrap gap-3">
-              {isAdmin && (
-                <Button asChild size="lg" variant="secondary">
-                  <Link to="/admin">
-                    <LayoutDashboard className="h-5 w-5 mr-2" />
-                    Tableau de bord
-                  </Link>
-                </Button>
-              )}
-              {isAgent && (
-                <Button asChild size="lg" className="bg-accent text-accent-foreground hover:bg-accent-glow">
-                  <Link to="/scan">
-                    <ScanLine className="h-5 w-5 mr-2" />
-                    Lancer le scanner
-                  </Link>
-                </Button>
-              )}
+              <Button asChild size="lg" className="bg-accent text-accent-foreground hover:bg-accent-glow shadow-gold">
+                <Link to="/admin">
+                  <LayoutDashboard className="h-5 w-5 mr-2" />
+                  Tableau de bord Admin
+                </Link>
+              </Button>
+              <Button asChild size="lg" variant="secondary">
+                <Link to="/scan">
+                  <ScanLine className="h-5 w-5 mr-2" />
+                  Scanner agent
+                </Link>
+              </Button>
               {!user && (
-                <Button asChild size="lg" className="bg-accent text-accent-foreground hover:bg-accent-glow shadow-gold">
+                <Button asChild size="lg" variant="outline" className="border-accent/40 text-accent hover:bg-accent/10">
                   <Link to="/auth">
-                    Accéder à la plateforme
+                    Connexion
                     <ArrowRight className="h-5 w-5 ml-2" />
                   </Link>
                 </Button>
