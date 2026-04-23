@@ -47,7 +47,7 @@ export default function Admin() {
     { label: "Invités enregistrés", value: stats.total, icon: Users, tone: "primary" as const },
     { label: "Présents", value: stats.present, icon: CheckCircle2, tone: "success" as const },
     { label: "Invitations émises", value: stats.total, icon: Ticket, tone: "primary" as const },
-    { label: "Recettes (XAF)", value: stats.revenue.toLocaleString("fr-FR"), icon: Wallet, tone: "accent" as const },
+    { label: "Recettes (RWF)", value: stats.revenue.toLocaleString("fr-FR"), icon: Wallet, tone: "accent" as const },
   ];
 
   const cats = [
