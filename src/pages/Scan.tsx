@@ -148,7 +148,7 @@ export default function Scan() {
               formats={["qr_code"]}
               scanDelay={250}
               styles={{ container: { width: "100%", height: "100%" }, video: { width: "100%", height: "100%", objectFit: "cover" } }}
-              components={{ finder: false, audio: false, torch: true, zoom: true }}
+              components={{ finder: false, torch: true, zoom: true }}
             />
           ) : (
             <div className="absolute inset-0 flex items-center justify-center bg-muted/40">
