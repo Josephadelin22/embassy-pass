@@ -53,10 +53,6 @@ const Index = () => {
               Contrôle d'accès <span className="text-accent">premium</span><br />
               par INOV E-TECH .L Ltd
             </h1>
-            <p className="text-lg text-primary-foreground/80 mb-8 max-w-xl">
-              Génération d'invitations sécurisées, scan QR temps réel et synchronisation cloud.
-              Une expérience digne d'un événement officiel.
-            </p>
             <div className="flex flex-wrap gap-3">
               <Button asChild size="lg" className="bg-accent text-accent-foreground hover:bg-accent-glow shadow-gold">
                 <Link to="/admin">
