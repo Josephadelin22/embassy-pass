@@ -14,7 +14,7 @@ const BodySchema = z.object({
   organization: z.string().trim().max(160).optional().or(z.literal('')),
   notes: z.string().trim().max(500).optional().or(z.literal('')),
   amount: z.number().nonnegative().max(10_000_000),
-  currency: z.string().trim().min(2).max(8).default('XAF'),
+  currency: z.string().trim().min(2).max(8).default('RWF'),
   payment_method: z.string().trim().max(40).optional().or(z.literal('')),
 });
 
@@ -117,7 +117,7 @@ Deno.serve(async (req) => {
       const { error: txErr } = await admin.from('transactions').insert({
         invitation_id: inv.id,
         amount: p.amount,
-        currency: p.currency || 'XAF',
+        currency: p.currency || 'RWF',
         payment_method: p.payment_method || null,
         created_by: userData.user.id,
       });
