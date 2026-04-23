@@ -24,7 +24,7 @@ const Schema = z.object({
   payment_method: z.string().trim().max(40).optional().or(z.literal("")),
 });
 
-const presets = { vip: 5000, visiteur: 3000, exposant: 0 };
+const presets = { vip: 0, visiteur: 5000, exposant: 3000 };
 
 export default function NewParticipant() {
   const nav = useNavigate();
@@ -38,7 +38,7 @@ export default function NewParticipant() {
     category: "visiteur" as "vip" | "visiteur" | "exposant",
     organization: "",
     notes: "",
-    amount: 3000,
+    amount: 5000,
     payment_method: "Espèces",
   });
 
@@ -158,9 +158,9 @@ export default function NewParticipant() {
                 >
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="vip">VIP — 5 000 XAF</SelectItem>
-                    <SelectItem value="visiteur">Visiteur — 3 000 XAF</SelectItem>
-                    <SelectItem value="exposant">Exposant — Gratuit</SelectItem>
+                    <SelectItem value="vip">VIP — Gratuit</SelectItem>
+                    <SelectItem value="exposant">Exposant — 3 000 RWF</SelectItem>
+                    <SelectItem value="visiteur">Visiteur — 5 000 RWF</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -169,7 +169,7 @@ export default function NewParticipant() {
                 <Input value={form.organization} onChange={(e) => update("organization", e.target.value)} />
               </div>
               <div className="space-y-2">
-                <Label>Montant payé (XAF)</Label>
+                <Label>Montant payé (RWF)</Label>
                 <Input type="number" min={0} value={form.amount} onChange={(e) => update("amount", Number(e.target.value))} />
               </div>
               <div className="space-y-2">
