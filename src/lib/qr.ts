@@ -26,7 +26,7 @@ export async function generateBadgeQR(payload: string, theme: QrTheme = {}): Pro
     margin: 12,
     qrOptions: { errorCorrectionLevel: "H" },
     image: theme.withLogo === false ? undefined : logo,
-    imageOptions: { crossOrigin: "anonymous", margin: 6, imageSize: 0.22, hideBackgroundDots: true },
+    imageOptions: { crossOrigin: "anonymous", margin: 10, imageSize: 0.38, hideBackgroundDots: true },
     dotsOptions: { type: "rounded", color: navy },
     cornersSquareOptions: { type: "extra-rounded", color: navy },
     cornersDotOptions: { type: "dot", color: gold },
