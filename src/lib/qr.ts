@@ -30,43 +30,64 @@ export async function generateBadgeQR(payload: string, theme: QrTheme = {}): Pro
   const W = canvas.width;
   const H = canvas.height;
 
-  // 2) Charge le logo
-  const img = await new Promise<HTMLImageElement>((resolve, reject) => {
-    const i = new Image();
-    i.crossOrigin = "anonymous";
-    i.onload = () => resolve(i);
-    i.onerror = reject;
-    i.src = inovLogo;
-  });
+  // 2) Charge le logo (optionnel — si échec, on renvoie quand même le QR)
+  let img: HTMLImageElement | null = null;
+  try {
+    img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const i = new Image();
+      i.onload = () => resolve(i);
+      i.onerror = () => reject(new Error("logo load failed"));
+      i.src = inovLogo;
+    });
+  } catch (e) {
+    console.warn("[qr] Logo non chargé, QR généré sans logo:", e);
+  }
 
-  // 3) Dessine un fond blanc arrondi au centre + le logo (style WhatsApp)
-  //    Logo ≈ 22% de la taille du QR — sûr avec correction H
-  const logoSize = Math.round(W * 0.22);
-  const padding = Math.round(W * 0.025);
-  const boxSize = logoSize + padding * 2;
-  const cx = (W - boxSize) / 2;
-  const cy = (H - boxSize) / 2;
+  if (img) {
+    // 3) Dessine un fond blanc arrondi au centre + le logo (style WhatsApp)
+    //    Logo ≈ 22% de la taille du QR — sûr avec correction H
+    const logoSize = Math.round(W * 0.22);
+    const padding = Math.round(W * 0.025);
+    const boxSize = logoSize + padding * 2;
+    const cx = (W - boxSize) / 2;
+    const cy = (H - boxSize) / 2;
 
-  // Carré blanc arrondi
-  const radius = Math.round(boxSize * 0.18);
-  ctx.fillStyle = "#FFFFFF";
-  ctx.beginPath();
-  ctx.moveTo(cx + radius, cy);
-  ctx.lineTo(cx + boxSize - radius, cy);
-  ctx.quadraticCurveTo(cx + boxSize, cy, cx + boxSize, cy + radius);
-  ctx.lineTo(cx + boxSize, cy + boxSize - radius);
-  ctx.quadraticCurveTo(cx + boxSize, cy + boxSize, cx + boxSize - radius, cy + boxSize);
-  ctx.lineTo(cx + radius, cy + boxSize);
-  ctx.quadraticCurveTo(cx, cy + boxSize, cx, cy + boxSize - radius);
-  ctx.lineTo(cx, cy + radius);
-  ctx.quadraticCurveTo(cx, cy, cx + radius, cy);
-  ctx.closePath();
-  ctx.fill();
+    const radius = Math.round(boxSize * 0.18);
+    ctx.fillStyle = "#FFFFFF";
+    ctx.beginPath();
+    ctx.moveTo(cx + radius, cy);
+    ctx.lineTo(cx + boxSize - radius, cy);
+    ctx.quadraticCurveTo(cx + boxSize, cy, cx + boxSize, cy + radius);
+    ctx.lineTo(cx + boxSize, cy + boxSize - radius);
+    ctx.quadraticCurveTo(cx + boxSize, cy + boxSize, cx + boxSize - radius, cy + boxSize);
+    ctx.lineTo(cx + radius, cy + boxSize);
+    ctx.quadraticCurveTo(cx, cy + boxSize, cx, cy + boxSize - radius);
+    ctx.lineTo(cx, cy + radius);
+    ctx.quadraticCurveTo(cx, cy, cx + radius, cy);
+    ctx.closePath();
+    ctx.fill();
 
-  // Logo par-dessus
-  ctx.drawImage(img, cx + padding, cy + padding, logoSize, logoSize);
+    try {
+      ctx.drawImage(img, cx + padding, cy + padding, logoSize, logoSize);
+    } catch (e) {
+      console.warn("[qr] drawImage a échoué:", e);
+    }
+  }
 
-  return canvas.toDataURL("image/png");
+  try {
+    return canvas.toDataURL("image/png");
+  } catch (e) {
+    // Canvas tainted (rare avec asset local) → fallback QR sans logo
+    console.warn("[qr] toDataURL a échoué, fallback QR pur:", e);
+    const pure = document.createElement("canvas");
+    await QRCode.toCanvas(pure, payload, {
+      errorCorrectionLevel: "H",
+      margin: 4,
+      width: size,
+      color: { dark: "#000000", light: "#FFFFFF" },
+    });
+    return pure.toDataURL("image/png");
+  }
 }
 
 export type BadgePdfInput = {
