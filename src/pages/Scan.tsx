@@ -69,11 +69,12 @@ export default function Scan() {
   const [facing, setFacing] = useState<"environment" | "user">("environment");
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<ScanResult | null>(null);
+  const [cameraError, setCameraError] = useState<string | null>(null);
   const lastPayload = useRef<{ value: string; ts: number } | null>(null);
 
-  const handleDecode = useCallback(async (codes: IDetectedBarcode[]) => {
-    if (!codes?.length || busy) return;
-    const payload = codes[0].rawValue?.trim();
+  const validatePayload = useCallback(async (rawPayload: string) => {
+    if (busy) return;
+    const payload = rawPayload.trim();
     if (!payload) return;
 
     const now = Date.now();
@@ -97,6 +98,32 @@ export default function Scan() {
       setTimeout(() => setBusy(false), 600);
     }
   }, [busy]);
+
+  const handleDecode = useCallback(async (codes: IDetectedBarcode[]) => {
+    if (!codes?.length) return;
+    const payload = codes[0].rawValue?.trim();
+    if (payload) await validatePayload(payload);
+  }, [validatePayload]);
+
+  async function scanImageFile(file: File) {
+    if (!('BarcodeDetector' in window)) {
+      toast.error("Scan depuis image non supporté par ce navigateur");
+      return;
+    }
+    const detector = new BarcodeDetector({ formats: ["qr_code"] });
+    const bitmap = await createImageBitmap(file);
+    try {
+      const codes = await detector.detect(bitmap);
+      const payload = codes[0]?.rawValue?.trim();
+      if (!payload) return toast.error("Aucun QR code détecté dans l'image");
+      await validatePayload(payload);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Lecture impossible";
+      toast.error(msg);
+    } finally {
+      bitmap.close();
+    }
+  }
 
   // Auto-clear result after a delay so the agent is ready for next scan
   useEffect(() => {
@@ -144,9 +171,12 @@ export default function Scan() {
             <Scanner
               key={facing}
               onScan={handleDecode}
+              onError={(error) => setCameraError(error instanceof Error ? error.message : "Caméra indisponible")}
               constraints={{ facingMode: facing }}
               formats={["qr_code"]}
-              scanDelay={250}
+              scanDelay={120}
+              allowMultiple
+              paused={busy}
               styles={{ container: { width: "100%", height: "100%" }, video: { width: "100%", height: "100%", objectFit: "cover" } }}
               components={{ finder: false, torch: true, zoom: true }}
             />
@@ -172,6 +202,29 @@ export default function Scan() {
             </div>
           )}
         </Card>
+
+        {cameraError && (
+          <p className="text-center text-xs text-destructive">{cameraError}</p>
+        )}
+
+        <div className="flex justify-center">
+          <Button asChild variant="outline" size="sm">
+            <label>
+              Scanner un QR depuis une image
+              <input
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="sr-only"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) void scanImageFile(file);
+                  e.currentTarget.value = "";
+                }}
+              />
+            </label>
+          </Button>
+        </div>
 
         {/* Result */}
         {result && meta && Icon && (
