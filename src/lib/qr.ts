@@ -1,48 +1,31 @@
-import logo from "@/assets/inov-logo.png";
-
 export type QrTheme = {
   size?: number;
-  navy?: string;
-  gold?: string;
-  withLogo?: boolean;
+  withLogo?: boolean; // ignored — kept for API compatibility
 };
 
 /**
- * Generate the QR code premium badge as a data URL (PNG).
- * Uses qr-code-styling with rounded eyes + INOV logo at center,
- * error correction level H (30%) for logo overlay.
+ * Generate a STANDARD-COMPLIANT QR code (ISO/IEC 18004) as a PNG data URL.
+ *
+ * Design choices for maximum scannability:
+ * - Pure black modules on pure white background (max contrast)
+ * - Square modules (no rounding) — required by the spec for reliable decoding
+ * - Quiet zone of 4 modules (mandatory per spec)
+ * - Error correction level M (15%) — best balance density/robustness when no logo
+ * - Module size ≥ 4px to ensure camera can resolve each module
  */
 export async function generateBadgeQR(payload: string, theme: QrTheme = {}): Promise<string> {
-  const { default: QRCodeStyling } = await import("qr-code-styling");
+  const QRCode = (await import("qrcode")).default;
   const size = theme.size ?? 600;
-  const navy = theme.navy ?? "#0d1b3d";
-  const gold = theme.gold ?? "#f5b324";
 
-  const qr = new QRCodeStyling({
+  return await QRCode.toDataURL(payload, {
+    errorCorrectionLevel: "M",
+    type: "image/png",
+    margin: 4, // quiet zone in modules — required by ISO/IEC 18004
     width: size,
-    height: size,
-    type: "canvas",
-    data: payload,
-    margin: 12,
-    qrOptions: { errorCorrectionLevel: "H" },
-    image: undefined,
-    imageOptions: { crossOrigin: "anonymous", margin: 0, imageSize: 0, hideBackgroundDots: false },
-    dotsOptions: { type: "rounded", color: navy },
-    cornersSquareOptions: { type: "extra-rounded", color: navy },
-    cornersDotOptions: { type: "dot", color: gold },
-    backgroundOptions: { color: "#ffffff" },
-  });
-
-  const blob = (await qr.getRawData("png")) as Blob;
-  return await blobToDataURL(blob);
-}
-
-function blobToDataURL(blob: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const fr = new FileReader();
-    fr.onload = () => resolve(fr.result as string);
-    fr.onerror = reject;
-    fr.readAsDataURL(blob);
+    color: {
+      dark: "#000000",
+      light: "#FFFFFF",
+    },
   });
 }
 
@@ -57,7 +40,6 @@ export type BadgePdfInput = {
 /** Build a beautifully branded PDF badge (A6 portrait). */
 export async function generateBadgePDF(input: BadgePdfInput): Promise<Blob> {
   const { jsPDF } = await import("jspdf");
-  // A6: 105 x 148 mm
   const doc = new jsPDF({ unit: "mm", format: "a6", orientation: "portrait" });
   const W = 105;
   const H = 148;
@@ -65,8 +47,6 @@ export async function generateBadgePDF(input: BadgePdfInput): Promise<Blob> {
   // Navy header
   doc.setFillColor(13, 27, 61);
   doc.rect(0, 0, W, 28, "F");
-
-  // Gold band
   doc.setFillColor(245, 179, 36);
   doc.rect(0, 28, W, 1.5, "F");
 
@@ -78,9 +58,13 @@ export async function generateBadgePDF(input: BadgePdfInput): Promise<Blob> {
   doc.setFontSize(8);
   doc.text("BADGE D'ACCÈS OFFICIEL", W / 2, 21, { align: "center" });
 
-  // QR center
+  // White card behind QR (ensures pure white quiet zone in print)
   const qrSize = 70;
-  doc.addImage(input.qrDataUrl, "PNG", (W - qrSize) / 2, 38, qrSize, qrSize);
+  const qrX = (W - qrSize) / 2;
+  const qrY = 38;
+  doc.setFillColor(255, 255, 255);
+  doc.rect(qrX - 2, qrY - 2, qrSize + 4, qrSize + 4, "F");
+  doc.addImage(input.qrDataUrl, "PNG", qrX, qrY, qrSize, qrSize);
 
   // Name
   doc.setTextColor(13, 27, 61);
@@ -89,7 +73,7 @@ export async function generateBadgePDF(input: BadgePdfInput): Promise<Blob> {
   const nameLines = doc.splitTextToSize(input.fullName.toUpperCase(), W - 16);
   doc.text(nameLines, W / 2, 118, { align: "center" });
 
-  // Category badge
+  // Category
   doc.setFillColor(13, 27, 61);
   const cat = input.category.toUpperCase();
   doc.setFontSize(8);
@@ -106,7 +90,6 @@ export async function generateBadgePDF(input: BadgePdfInput): Promise<Blob> {
     doc.text(input.organization, W / 2, 134, { align: "center" });
   }
 
-  // Footer
   doc.setTextColor(140, 140, 140);
   doc.setFontSize(6);
   doc.text(`Réf: ${input.reference.slice(0, 8).toUpperCase()}`, W / 2, 144, { align: "center" });
