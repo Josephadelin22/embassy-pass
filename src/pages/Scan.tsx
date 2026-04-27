@@ -173,9 +173,19 @@ export default function Scan() {
               key={facing}
               onScan={handleDecode}
               onError={(error) => setCameraError(error instanceof Error ? error.message : "Caméra indisponible")}
-              constraints={{ facingMode: facing }}
+              constraints={{
+                facingMode: { ideal: facing },
+                width: { ideal: 1920 },
+                height: { ideal: 1080 },
+                frameRate: { ideal: 30 },
+                // Macro / close-focus hints (best-effort, ignored by browsers that don't support them)
+                advanced: [
+                  { focusMode: "continuous" } as MediaTrackConstraintSet,
+                  { focusDistance: 0.1 } as unknown as MediaTrackConstraintSet,
+                ],
+              } as MediaTrackConstraints}
               formats={["qr_code"]}
-              scanDelay={120}
+              scanDelay={100}
               allowMultiple
               paused={busy}
               styles={{ container: { width: "100%", height: "100%" }, video: { width: "100%", height: "100%", objectFit: "cover" } }}
