@@ -17,7 +17,7 @@ export async function generateBadgeQR(payload: string, theme: QrTheme = {}): Pro
   const QRCode = (await import("qrcode")).default;
   const size = theme.size ?? 600;
 
-  // 1) Génère le QR sur un canvas (fond blanc + modules noirs)
+  // 1) Génère le QR avec correction H (30%) pour tolérer le logo central
   const canvas = document.createElement("canvas");
   await QRCode.toCanvas(canvas, payload, {
     errorCorrectionLevel: "H",
@@ -39,39 +39,32 @@ export async function generateBadgeQR(payload: string, theme: QrTheme = {}): Pro
     i.src = inovLogo;
   });
 
-  // 3) Dessine le logo en filigrane DERRIÈRE les modules :
-  //    on capture les modules noirs, on remet le fond blanc, on dessine le logo
-  //    très léger, puis on redessine les modules noirs par-dessus.
-  const qrImageData = ctx.getImageData(0, 0, W, H);
+  // 3) Dessine un fond blanc arrondi au centre + le logo (style WhatsApp)
+  //    Logo ≈ 22% de la taille du QR — sûr avec correction H
+  const logoSize = Math.round(W * 0.22);
+  const padding = Math.round(W * 0.025);
+  const boxSize = logoSize + padding * 2;
+  const cx = (W - boxSize) / 2;
+  const cy = (H - boxSize) / 2;
 
-  // Fond blanc
+  // Carré blanc arrondi
+  const radius = Math.round(boxSize * 0.18);
   ctx.fillStyle = "#FFFFFF";
-  ctx.fillRect(0, 0, W, H);
+  ctx.beginPath();
+  ctx.moveTo(cx + radius, cy);
+  ctx.lineTo(cx + boxSize - radius, cy);
+  ctx.quadraticCurveTo(cx + boxSize, cy, cx + boxSize, cy + radius);
+  ctx.lineTo(cx + boxSize, cy + boxSize - radius);
+  ctx.quadraticCurveTo(cx + boxSize, cy + boxSize, cx + boxSize - radius, cy + boxSize);
+  ctx.lineTo(cx + radius, cy + boxSize);
+  ctx.quadraticCurveTo(cx, cy + boxSize, cx, cy + boxSize - radius);
+  ctx.lineTo(cx, cy + radius);
+  ctx.quadraticCurveTo(cx, cy, cx + radius, cy);
+  ctx.closePath();
+  ctx.fill();
 
-  // Logo centré, ~55% de la taille, opacité très faible
-  const logoSize = Math.round(W * 0.55);
-  const lx = (W - logoSize) / 2;
-  const ly = (H - logoSize) / 2;
-  ctx.globalAlpha = 0.08; // vraiment léger
-  ctx.drawImage(img, lx, ly, logoSize, logoSize);
-  ctx.globalAlpha = 1;
-
-  // Redessine les modules noirs par-dessus pour garantir le scan
-  const blackOverlay = ctx.createImageData(W, H);
-  const src = qrImageData.data;
-  const dst = blackOverlay.data;
-  for (let i = 0; i < src.length; i += 4) {
-    // pixel noir du QR original ?
-    if (src[i] < 30 && src[i + 1] < 30 && src[i + 2] < 30) {
-      dst[i] = 0;
-      dst[i + 1] = 0;
-      dst[i + 2] = 0;
-      dst[i + 3] = 255;
-    } else {
-      dst[i + 3] = 0; // transparent → laisse voir le filigrane
-    }
-  }
-  ctx.putImageData(blackOverlay, 0, 0);
+  // Logo par-dessus
+  ctx.drawImage(img, cx + padding, cy + padding, logoSize, logoSize);
 
   return canvas.toDataURL("image/png");
 }
