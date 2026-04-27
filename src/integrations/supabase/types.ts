@@ -150,6 +150,44 @@ export type Database = {
         }
         Relationships: []
       }
+      qr_signature_history: {
+        Row: {
+          admin_id: string
+          id: string
+          invitation_id: string
+          old_signature: string
+          old_uuid_secret: string
+          regenerated_at: string
+          regeneration_batch_id: string
+        }
+        Insert: {
+          admin_id: string
+          id?: string
+          invitation_id: string
+          old_signature: string
+          old_uuid_secret: string
+          regenerated_at?: string
+          regeneration_batch_id: string
+        }
+        Update: {
+          admin_id?: string
+          id?: string
+          invitation_id?: string
+          old_signature?: string
+          old_uuid_secret?: string
+          regenerated_at?: string
+          regeneration_batch_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "qr_signature_history_invitation_id_fkey"
+            columns: ["invitation_id"]
+            isOneToOne: false
+            referencedRelation: "invitations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       transactions: {
         Row: {
           amount: number
