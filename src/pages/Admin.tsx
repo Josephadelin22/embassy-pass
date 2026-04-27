@@ -4,8 +4,20 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Users, Ticket, CheckCircle2, Wallet, Plus, ArrowRight, Crown, UserCheck, Building2 } from "lucide-react";
+import { Users, Ticket, CheckCircle2, Wallet, Plus, ArrowRight, Crown, UserCheck, Building2, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { toast } from "sonner";
 
 type Stats = {
   total: number;
@@ -19,6 +31,22 @@ type Stats = {
 export default function Admin() {
   const [stats, setStats] = useState<Stats>({ total: 0, present: 0, vip: 0, visiteur: 0, exposant: 0, revenue: 0 });
   const [loading, setLoading] = useState(true);
+  const [regenerating, setRegenerating] = useState(false);
+
+  async function regenerateAll() {
+    setRegenerating(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("regenerate-qrs", {
+        body: { only_active: true },
+      });
+      if (error) throw error;
+      toast.success(`${data?.updated ?? 0} QR régénérés. Les anciens badges sont annulés.`);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Erreur lors de la régénération");
+    } finally {
+      setRegenerating(false);
+    }
+  }
 
   useEffect(() => { load(); }, []);
 
@@ -105,8 +133,8 @@ export default function Admin() {
         ))}
       </div>
 
-      <Card className="p-6 shadow-card border-border/60">
-        <div className="flex items-center justify-between">
+      <Card className="p-6 shadow-card border-border/60 mb-4">
+        <div className="flex items-center justify-between flex-wrap gap-3">
           <div>
             <h3 className="font-display font-bold text-lg">Gérer les participants</h3>
             <p className="text-sm text-muted-foreground">Liste, recherche, téléchargement des badges</p>
@@ -114,6 +142,37 @@ export default function Admin() {
           <Button asChild variant="outline">
             <Link to="/admin/participants">Ouvrir <ArrowRight className="h-4 w-4 ml-2" /></Link>
           </Button>
+        </div>
+      </Card>
+
+      <Card className="p-6 shadow-card border-border/60">
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <div>
+            <h3 className="font-display font-bold text-lg">Régénérer tous les QR codes</h3>
+            <p className="text-sm text-muted-foreground">
+              Crée de nouvelles signatures pour toutes les invitations actives. Les anciens badges seront définitivement invalides — pensez à retélécharger et redistribuer les nouveaux PDF/PNG.
+            </p>
+          </div>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="destructive" disabled={regenerating}>
+                <RefreshCw className={cn("h-4 w-4 mr-2", regenerating && "animate-spin")} />
+                {regenerating ? "Régénération..." : "Régénérer en masse"}
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Confirmer la régénération</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Tous les QR actifs seront remplacés. Les anciens badges déjà imprimés ou envoyés ne fonctionneront plus. Les invitations déjà utilisées (présents) ne sont pas modifiées.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Annuler</AlertDialogCancel>
+                <AlertDialogAction onClick={regenerateAll}>Confirmer</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       </Card>
     </AdminShell>
