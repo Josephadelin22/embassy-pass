@@ -17,7 +17,19 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   ];
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background relative overflow-hidden">
+      {/* Watermark logo en arrière-plan */}
+      <div
+        aria-hidden
+        className="pointer-events-none fixed inset-0 z-0 flex items-center justify-center"
+      >
+        <img
+          src={inovLogo}
+          alt=""
+          className="w-[60vmin] max-w-[700px] opacity-[0.035] select-none"
+        />
+      </div>
+      <div className="relative z-10">
       <header className="border-b border-border/60 bg-card/90 backdrop-blur sticky top-0 z-40">
         <div className="container flex items-center justify-between h-16 gap-6">
           <Link to="/"><Logo /></Link>
