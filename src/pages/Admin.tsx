@@ -4,7 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Users, Ticket, CheckCircle2, Wallet, Plus, ArrowRight, Crown, UserCheck, Building2, RefreshCw } from "lucide-react";
+import { Users, Ticket, CheckCircle2, Wallet, Plus, ArrowRight, Crown, UserCheck, Building2, RefreshCw, History } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   AlertDialog,
@@ -28,10 +28,18 @@ type Stats = {
   revenue: number;
 };
 
+type RegenerationBatch = {
+  batchId: string;
+  regeneratedAt: string;
+  adminId: string;
+  count: number;
+};
+
 export default function Admin() {
   const [stats, setStats] = useState<Stats>({ total: 0, present: 0, vip: 0, visiteur: 0, exposant: 0, revenue: 0 });
   const [loading, setLoading] = useState(true);
   const [regenerating, setRegenerating] = useState(false);
+  const [qrHistory, setQrHistory] = useState<RegenerationBatch[]>([]);
 
   async function regenerateAll() {
     setRegenerating(true);
@@ -40,7 +48,8 @@ export default function Admin() {
         body: { only_active: true },
       });
       if (error) throw error;
-      toast.success(`${data?.updated ?? 0} QR régénérés. Les anciens badges sont annulés.`);
+      toast.success(`${data?.updated ?? 0} QR régénérés. Lot ${String(data?.batch_id ?? "").slice(0, 8)} enregistré.`);
+      await loadQrHistory();
     } catch (e: any) {
       toast.error(e?.message ?? "Erreur lors de la régénération");
     } finally {
@@ -48,7 +57,7 @@ export default function Admin() {
     }
   }
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { void load(); void loadQrHistory(); }, []);
 
   async function load() {
     setLoading(true);
@@ -69,6 +78,32 @@ export default function Admin() {
       revenue: txs.reduce((s, t) => s + Number(t.amount), 0),
     });
     setLoading(false);
+  }
+
+  async function loadQrHistory() {
+    const { data, error } = await supabase
+      .from("qr_signature_history")
+      .select("regeneration_batch_id, regenerated_at, admin_id")
+      .order("regenerated_at", { ascending: false })
+      .limit(250);
+    if (error) return;
+
+    const grouped = new Map<string, RegenerationBatch>();
+    for (const row of data ?? []) {
+      const existing = grouped.get(row.regeneration_batch_id);
+      if (existing) existing.count += 1;
+      else grouped.set(row.regeneration_batch_id, {
+        batchId: row.regeneration_batch_id,
+        regeneratedAt: row.regenerated_at,
+        adminId: row.admin_id,
+        count: 1,
+      });
+    }
+    setQrHistory(Array.from(grouped.values()).slice(0, 5));
+  }
+
+  function formatDateTime(iso: string) {
+    return new Date(iso).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "medium" });
   }
 
   const cards = [
