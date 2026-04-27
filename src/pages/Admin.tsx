@@ -210,6 +210,27 @@ export default function Admin() {
           </AlertDialog>
         </div>
       </Card>
+
+      <Card className="p-6 shadow-card border-border/60 mt-4">
+        <div className="flex items-start gap-3">
+          <div className="h-10 w-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+            <History className="h-5 w-5" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h3 className="font-display font-bold text-lg">Historique des régénérations QR</h3>
+            <div className="mt-3 space-y-2">
+              {qrHistory.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Aucun lot régénéré pour le moment.</p>
+              ) : qrHistory.map((batch) => (
+                <div key={batch.batchId} className="rounded-lg border border-border/60 px-3 py-2 text-sm flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                  <span className="font-medium">Lot {batch.batchId.slice(0, 8)} · {batch.count} QR</span>
+                  <span className="text-muted-foreground">{formatDateTime(batch.regeneratedAt)} · Admin {batch.adminId.slice(0, 8)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </Card>
     </AdminShell>
   );
 }
