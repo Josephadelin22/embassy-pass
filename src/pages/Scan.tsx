@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { CheckCircle2, XCircle, AlertTriangle, Loader2, Camera, CameraOff, RotateCcw, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 type ScanStatus = "valid" | "duplicate" | "invalid" | "revoked" | "error";
 
