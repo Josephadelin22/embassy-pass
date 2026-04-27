@@ -62,27 +62,41 @@ Deno.serve(async (req) => {
 
     const admin = createClient(SUPABASE_URL, SERVICE_ROLE);
 
-    let q = admin.from('invitations').select('id, status');
-    if (onlyActive) q = q.neq('status', 'utilise');
+    let q = admin.from('invitations').select('id, status, uuid_secret, signature');
+    if (onlyActive) q = q.eq('status', 'actif');
     const { data: invs, error: listErr } = await q;
     if (listErr) throw listErr;
 
+    const batchId = crypto.randomUUID();
+    const regeneratedAt = new Date().toISOString();
     let updated = 0;
     const errors: string[] = [];
 
     for (const inv of invs ?? []) {
       const newSecret = crypto.randomUUID();
       const newSig = await hmacSign(newSecret, SIGNING_SECRET);
+      const { error: histErr } = await admin.from('qr_signature_history').insert({
+        invitation_id: inv.id,
+        old_uuid_secret: inv.uuid_secret,
+        old_signature: inv.signature,
+        regeneration_batch_id: batchId,
+        admin_id: userData.user.id,
+        regenerated_at: regeneratedAt,
+      });
+      if (histErr) {
+        errors.push(`${inv.id}: history ${histErr.message}`);
+        continue;
+      }
       const { error: upErr } = await admin
         .from('invitations')
-        .update({ uuid_secret: newSecret, signature: newSig })
+        .update({ uuid_secret: newSecret, signature: newSig, generated_at: regeneratedAt })
         .eq('id', inv.id);
       if (upErr) errors.push(`${inv.id}: ${upErr.message}`);
       else updated++;
     }
 
     return new Response(
-      JSON.stringify({ total: invs?.length ?? 0, updated, errors }),
+      JSON.stringify({ total: invs?.length ?? 0, updated, errors, batch_id: batchId, regenerated_at: regeneratedAt }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     );
   } catch (e) {
