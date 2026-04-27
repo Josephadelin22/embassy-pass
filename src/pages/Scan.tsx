@@ -182,8 +182,7 @@ export default function Scan() {
                 advanced: [
                   { focusMode: "continuous" },
                   { focusDistance: 0.1 },
-                  { resizeMode: "none" },
-                ],
+                ] as MediaTrackConstraintSet[],
               } as MediaTrackConstraints}
               formats={["qr_code"]}
               scanDelay={100}
