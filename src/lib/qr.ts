@@ -1,32 +1,79 @@
+import inovLogo from "@/assets/inov-logo.png";
+
 export type QrTheme = {
   size?: number;
-  withLogo?: boolean; // ignored — kept for API compatibility
+  withLogo?: boolean; // garde compat — logo désormais en filigrane par défaut
 };
 
 /**
  * Generate a STANDARD-COMPLIANT QR code (ISO/IEC 18004) as a PNG data URL.
  *
- * Design choices for maximum scannability:
- * - Pure black modules on pure white background (max contrast)
- * - Square modules (no rounding) — required by the spec for reliable decoding
- * - Quiet zone of 4 modules (mandatory per spec)
- * - Error correction level M (15%) — best balance density/robustness when no logo
- * - Module size ≥ 4px to ensure camera can resolve each module
+ * - Niveau de correction H (30%) pour rester scannable malgré le filigrane
+ * - Logo INOV E-TECH dessiné en arrière-plan TRÈS léger (opacité ~8%)
+ * - Modules noirs purs dessinés PAR-DESSUS le filigrane → scan garanti
+ * - Quiet zone de 4 modules (obligatoire)
  */
 export async function generateBadgeQR(payload: string, theme: QrTheme = {}): Promise<string> {
   const QRCode = (await import("qrcode")).default;
   const size = theme.size ?? 600;
 
-  return await QRCode.toDataURL(payload, {
-    errorCorrectionLevel: "M",
-    type: "image/png",
-    margin: 4, // quiet zone in modules — required by ISO/IEC 18004
+  // 1) Génère le QR sur un canvas (fond blanc + modules noirs)
+  const canvas = document.createElement("canvas");
+  await QRCode.toCanvas(canvas, payload, {
+    errorCorrectionLevel: "H",
+    margin: 4,
     width: size,
-    color: {
-      dark: "#000000",
-      light: "#FFFFFF",
-    },
+    color: { dark: "#000000", light: "#FFFFFF" },
   });
+
+  const ctx = canvas.getContext("2d")!;
+  const W = canvas.width;
+  const H = canvas.height;
+
+  // 2) Charge le logo
+  const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+    const i = new Image();
+    i.crossOrigin = "anonymous";
+    i.onload = () => resolve(i);
+    i.onerror = reject;
+    i.src = inovLogo;
+  });
+
+  // 3) Dessine le logo en filigrane DERRIÈRE les modules :
+  //    on capture les modules noirs, on remet le fond blanc, on dessine le logo
+  //    très léger, puis on redessine les modules noirs par-dessus.
+  const qrImageData = ctx.getImageData(0, 0, W, H);
+
+  // Fond blanc
+  ctx.fillStyle = "#FFFFFF";
+  ctx.fillRect(0, 0, W, H);
+
+  // Logo centré, ~55% de la taille, opacité très faible
+  const logoSize = Math.round(W * 0.55);
+  const lx = (W - logoSize) / 2;
+  const ly = (H - logoSize) / 2;
+  ctx.globalAlpha = 0.08; // vraiment léger
+  ctx.drawImage(img, lx, ly, logoSize, logoSize);
+  ctx.globalAlpha = 1;
+
+  // Redessine les modules noirs par-dessus pour garantir le scan
+  const blackOverlay = ctx.createImageData(W, H);
+  const src = qrImageData.data;
+  const dst = blackOverlay.data;
+  for (let i = 0; i < src.length; i += 4) {
+    // pixel noir du QR original ?
+    if (src[i] < 30 && src[i + 1] < 30 && src[i + 2] < 30) {
+      dst[i] = 0;
+      dst[i + 1] = 0;
+      dst[i + 2] = 0;
+      dst[i + 3] = 255;
+    } else {
+      dst[i + 3] = 0; // transparent → laisse voir le filigrane
+    }
+  }
+  ctx.putImageData(blackOverlay, 0, 0);
+
+  return canvas.toDataURL("image/png");
 }
 
 export type BadgePdfInput = {
