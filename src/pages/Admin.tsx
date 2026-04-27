@@ -50,8 +50,8 @@ export default function Admin() {
       if (error) throw error;
       toast.success(`${data?.updated ?? 0} QR régénérés. Lot ${String(data?.batch_id ?? "").slice(0, 8)} enregistré.`);
       await loadQrHistory();
-    } catch (e: any) {
-      toast.error(e?.message ?? "Erreur lors de la régénération");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Erreur lors de la régénération");
     } finally {
       setRegenerating(false);
     }
