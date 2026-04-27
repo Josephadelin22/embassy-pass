@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { LayoutDashboard, Users, ScanLine, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
-import inovLogo from "@/assets/inov-logo.png";
 
 export function AdminShell({ children }: { children: React.ReactNode }) {
   const { user, signOut, isAgent } = useAuth();
