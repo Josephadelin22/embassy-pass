@@ -80,6 +80,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         </nav>
       </header>
       <main className="container py-8 animate-fade-in">{children}</main>
+      </div>
     </div>
   );
 }
