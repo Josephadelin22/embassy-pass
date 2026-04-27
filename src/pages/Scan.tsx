@@ -180,9 +180,9 @@ export default function Scan() {
                 frameRate: { ideal: 30 },
                 // Macro / close-focus hints (best-effort, ignored by browsers that don't support them)
                 advanced: [
-                  { focusMode: "continuous" },
-                  { focusDistance: 0.1 },
-                ] as MediaTrackConstraintSet[],
+                  { focusMode: "continuous" } as MediaTrackConstraintSet,
+                  { focusDistance: 0.1 } as unknown as MediaTrackConstraintSet,
+                ],
               } as MediaTrackConstraints}
               formats={["qr_code"]}
               scanDelay={100}
