@@ -78,58 +78,6 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Modules */}
-      <section className="container py-16 md:py-20">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl md:text-4xl font-display font-bold mb-3">
-            Trois modules. Une seule plateforme.
-          </h2>
-          <p className="text-muted-foreground max-w-xl mx-auto">
-            Architecture pensée pour la fiabilité terrain et la traçabilité totale.
-          </p>
-        </div>
-
-        <div className="grid md:grid-cols-3 gap-6">
-          {[
-            {
-              icon: LayoutDashboard,
-              title: "Module Admin",
-              desc: "Gestion des invités, transactions et statistiques en temps réel.",
-              tone: "primary",
-            },
-            {
-              icon: ScanLine,
-              title: "Module Agent",
-              desc: "Scanner QR mobile avec retour visuel immédiat (vert / rouge).",
-              tone: "accent",
-            },
-            {
-              icon: ShieldCheck,
-              title: "Sécurité",
-              desc: "QR codes signés HMAC, rôles granulaires, RLS Postgres.",
-              tone: "primary",
-            },
-          ].map((m) => (
-            <Card
-              key={m.title}
-              className="p-6 shadow-card hover:shadow-elegant transition-smooth border-border/60 group"
-            >
-              <div
-                className={`h-12 w-12 rounded-xl flex items-center justify-center mb-4 ${
-                  m.tone === "accent"
-                    ? "bg-gradient-gold text-accent-foreground shadow-gold"
-                    : "bg-gradient-primary text-primary-foreground"
-                }`}
-              >
-                <m.icon className="h-6 w-6" />
-              </div>
-              <h3 className="font-display font-bold text-xl mb-2">{m.title}</h3>
-              <p className="text-sm text-muted-foreground">{m.desc}</p>
-            </Card>
-          ))}
-        </div>
-      </section>
-
       <footer className="border-t border-border/60 py-8">
         <div className="container text-center text-xs text-muted-foreground">
           © 2026 INOV E-TECH .L Ltd — Tous droits réservés
