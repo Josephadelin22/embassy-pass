@@ -6,7 +6,18 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router-dom";
-import { Plus, Search, Download, QrCode, CheckCircle2, Clock, Image as ImageIcon, FileDown } from "lucide-react";
+import { Plus, Search, Download, QrCode, CheckCircle2, Clock, Image as ImageIcon, FileDown, Trash2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { generateBadgeQR, generateBadgePDF, downloadBlob, downloadDataUrl } from "@/lib/qr";
 import { toast } from "sonner";
 
@@ -109,6 +120,24 @@ export default function Participants() {
       downloadDataUrl(qr, `badge-${r.full_name.replace(/\s+/g, "-")}.png`);
     } catch {
       toast.error("Erreur génération badge PNG");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function deleteParticipant(r: Row) {
+    setBusy(`${r.id}-del`);
+    try {
+      if (r.invitation) {
+        const { error: e1 } = await supabase.from("invitations").delete().eq("id", r.invitation.id);
+        if (e1) throw e1;
+      }
+      const { error: e2 } = await supabase.from("participants").delete().eq("id", r.id);
+      if (e2) throw e2;
+      toast.success(`${r.full_name} supprimé`);
+      setRows((prev) => prev.filter((x) => x.id !== r.id));
+    } catch (err: any) {
+      toast.error(err?.message || "Erreur lors de la suppression");
     } finally {
       setBusy(null);
     }
@@ -226,6 +255,36 @@ export default function Participants() {
                     <FileDown className="h-4 w-4 mr-2" />
                     {busy === `${r.id}-pdf` ? "..." : "PDF"}
                   </Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={busy !== null}
+                        className="text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        {busy === `${r.id}-del` ? "..." : "Supprimer"}
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Supprimer cet invité ?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Cette action supprimera définitivement <strong>{r.full_name}</strong> ainsi que son invitation et son QR code. Cette opération est irréversible.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Annuler</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={() => void deleteParticipant(r)}
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                          Supprimer
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 </div>
               </div>
             ))}
