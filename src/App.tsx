@@ -9,6 +9,7 @@ import Admin from "./pages/Admin.tsx";
 import Participants from "./pages/Participants.tsx";
 import NewParticipant from "./pages/NewParticipant.tsx";
 import Scan from "./pages/Scan.tsx";
+import LiveDashboard from "./pages/LiveDashboard.tsx";
 import { ProtectedRoute } from "./components/ProtectedRoute.tsx";
 
 const App = () => (
@@ -48,6 +49,14 @@ const App = () => (
           element={
             <ProtectedRoute requireRole="agent">
               <Scan />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/live"
+          element={
+            <ProtectedRoute requireRole="admin">
+              <LiveDashboard />
             </ProtectedRoute>
           }
         />

@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { CheckCircle2, XCircle, AlertTriangle, Loader2, Camera, CameraOff, RotateCcw, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { preloadData, verifyScanOffline, queueScanOffline, getQueueCount, syncQueue } from "@/lib/offlineSync";
 
 type ScanStatus = "valid" | "duplicate" | "invalid" | "revoked" | "error";
 
@@ -72,6 +73,49 @@ export default function Scan() {
   const [result, setResult] = useState<ScanResult | null>(null);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const lastPayload = useRef<{ value: string; ts: number } | null>(null);
+  const [offlineReady, setOfflineReady] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [queueCount, setQueueCount] = useState(0);
+
+  useEffect(() => {
+    getQueueCount().then(setQueueCount);
+    const handleOnline = () => {
+      toast.success("Connexion rétablie, synchronisation...");
+      void handleSync();
+    };
+    window.addEventListener('online', handleOnline);
+    return () => window.removeEventListener('online', handleOnline);
+  }, []);
+
+  async function handlePreload() {
+    setSyncing(true);
+    try {
+      const count = await preloadData();
+      setOfflineReady(true);
+      toast.success(`${count} billets préchargés pour le mode hors-ligne !`);
+    } catch (e: any) {
+      toast.error("Erreur de préchargement : " + e.message);
+    } finally {
+      setSyncing(false);
+    }
+  }
+
+  async function handleSync() {
+    if (!navigator.onLine) {
+      return toast.error("Vous êtes hors-ligne");
+    }
+    setSyncing(true);
+    try {
+      const count = await syncQueue();
+      if (count > 0) toast.success(`${count} scans synchronisés avec succès !`);
+      setQueueCount(await getQueueCount());
+      await preloadData(); // Refresh cache
+    } catch (e: any) {
+      toast.error("Erreur de synchronisation");
+    } finally {
+      setSyncing(false);
+    }
+  }
 
   const validatePayload = useCallback(async (rawPayload: string) => {
     if (busy) return;
@@ -83,7 +127,31 @@ export default function Scan() {
     lastPayload.current = { value: payload, ts: now };
 
     setBusy(true);
+
     try {
+      // Offline first verification
+      if (offlineReady || queueCount > 0) {
+        const local = await verifyScanOffline(payload);
+        if (local.valid && local.invitation) {
+          if (local.status === "utilise") {
+            setResult({ status: "duplicate", participant: local.invitation.participant });
+            feedback("duplicate");
+          } else if (local.status === "actif") {
+            await queueScanOffline(local.invitation.id);
+            setQueueCount(c => c + 1);
+            setResult({ status: "valid", participant: local.invitation.participant });
+            feedback("valid");
+            // Try background sync if online
+            if (navigator.onLine) handleSync();
+          } else {
+            setResult({ status: "revoked", participant: local.invitation.participant });
+            feedback("revoked");
+          }
+          return;
+        }
+      }
+
+      // Fallback to API
       const { data, error } = await supabase.functions.invoke("validate-scan", {
         body: { payload, device_info: navigator.userAgent },
       });
@@ -98,7 +166,7 @@ export default function Scan() {
     } finally {
       setTimeout(() => setBusy(false), 600);
     }
-  }, [busy]);
+  }, [busy, offlineReady, queueCount]);
 
   const handleDecode = useCallback(async (codes: IDetectedBarcode[]) => {
     if (!codes?.length) return;
@@ -142,6 +210,14 @@ export default function Scan() {
         <div className="container flex items-center justify-between h-14">
           <Logo />
           <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={handlePreload} disabled={syncing}>
+              {syncing ? <Loader2 className="h-4 w-4 animate-spin" /> : "Précharger"}
+            </Button>
+            {queueCount > 0 && (
+              <Button variant="secondary" size="sm" onClick={handleSync} disabled={syncing}>
+                Sync ({queueCount})
+              </Button>
+            )}
             <Button asChild variant="ghost" size="sm"><Link to="/">Accueil</Link></Button>
           </div>
         </div>
@@ -237,43 +313,26 @@ export default function Scan() {
           </Button>
         </div>
 
-        {/* Result */}
+        {/* Fullscreen Feedback Overlay */}
         {result && meta && Icon && (
-          <Card className={cn("p-5 animate-fade-in border-2", meta.ring.replace("ring-", "border-"))}>
-            <div className="flex items-start gap-4">
-              <div className={cn("h-14 w-14 rounded-2xl flex items-center justify-center text-white shrink-0", meta.color)}>
-                <Icon className="h-8 w-8" />
+          <div className={cn("fixed inset-0 z-50 flex flex-col items-center justify-center animate-in fade-in zoom-in duration-200", meta.color)}>
+            <Icon className="h-32 w-32 text-white mb-6 animate-bounce" />
+            <h1 className="text-5xl font-black text-white tracking-tight mb-2 text-center px-4">
+              {meta.label}
+            </h1>
+            {result.participant ? (
+              <div className="text-center text-white/90">
+                <p className="text-3xl font-bold">{result.participant.full_name}</p>
+                <p className="text-xl mt-2 uppercase tracking-widest opacity-80">{result.participant.category}</p>
               </div>
-              <div className="flex-1 min-w-0">
-                <Badge className={cn("text-white", meta.color)}>{meta.label}</Badge>
-                {result.participant ? (
-                  <>
-                    <h2 className="text-xl font-bold mt-2 truncate">{result.participant.full_name}</h2>
-                    <div className="flex flex-wrap items-center gap-2 mt-1 text-sm text-muted-foreground">
-                      <span className="uppercase tracking-wide font-semibold">{result.participant.category}</span>
-                      {result.participant.organization && <>· <span className="truncate">{result.participant.organization}</span></>}
-                    </div>
-                  </>
-                ) : (
-                  <p className="mt-2 text-sm text-muted-foreground">{result.reason ?? "QR non reconnu"}</p>
-                )}
-
-                {result.first_scan_at && (
-                  <div className="mt-3 flex items-center gap-2 text-sm rounded-lg bg-amber-50 text-amber-900 border border-amber-200 px-3 py-2">
-                    <Clock className="h-4 w-4" />
-                    <span>1er passage&nbsp;: <strong>{formatDateTime(result.first_scan_at)}</strong></span>
-                  </div>
-                )}
-              </div>
-            </div>
-            <div className="mt-4 flex justify-end">
-              <Button size="sm" variant="outline" onClick={() => setResult(null)}>Scanner suivant</Button>
-            </div>
-          </Card>
+            ) : (
+              <p className="text-2xl text-white/80">{result.reason ?? "QR non reconnu"}</p>
+            )}
+          </div>
         )}
 
         <p className="text-center text-xs text-muted-foreground pt-2">
-          Validation HMAC côté serveur · Détection double-scan · Audio &amp; vibration
+          Validation offline / serveur · Détection double-scan · Audio &amp; vibration
         </p>
       </main>
     </div>

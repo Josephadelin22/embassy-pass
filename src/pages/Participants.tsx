@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { AdminShell } from "@/components/AdminShell";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router-dom";
-import { Plus, Search, Download, QrCode, CheckCircle2, Clock, Image as ImageIcon, FileDown, Trash2 } from "lucide-react";
+import { Plus, Search, Download, Upload, QrCode, CheckCircle2, Clock, Image as ImageIcon, FileDown, Trash2, Loader2 } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { generateBadgeQR, generateBadgePDF, downloadBlob, downloadDataUrl } from "@/lib/qr";
 import { toast } from "sonner";
+import { exportCsv, parseCsv } from "@/lib/csv";
 
 type Row = {
   id: string;
@@ -47,6 +48,8 @@ export default function Participants() {
   const [status, setStatus] = useState<StatusFilter>("all");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [importProgress, setImportProgress] = useState<{ current: number; total: number } | null>(null);
 
   useEffect(() => { void load(); }, []);
 
@@ -143,6 +146,73 @@ export default function Participants() {
     }
   }
 
+  function handleExportCsv() {
+    const data = filtered.map(r => ({
+      full_name: r.full_name,
+      email: r.email || "",
+      phone: r.phone || "",
+      category: r.category,
+      organization: r.organization || "",
+      is_used: r.invitation?.status === "utilise" ? "Oui" : "Non",
+    }));
+    exportCsv(data, `participants-${category}-${status}.csv`);
+  }
+
+  async function handleImportCsv(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    try {
+      const data = await parseCsv(file);
+      if (!data || data.length === 0) throw new Error("Fichier vide ou invalide");
+      
+      setImportProgress({ current: 0, total: data.length });
+      let successCount = 0;
+      let errorCount = 0;
+
+      for (let i = 0; i < data.length; i++) {
+        const row = data[i];
+        if (!row.full_name) {
+          errorCount++;
+          continue;
+        }
+
+        try {
+          const payload = {
+            full_name: row.full_name,
+            email: row.email || "",
+            phone: row.phone || "",
+            category: ["vip", "visiteur", "exposant"].includes(row.category?.toLowerCase()) ? row.category.toLowerCase() : "visiteur",
+            organization: row.organization || "",
+            notes: row.notes || "Importé par CSV",
+            amount: Number(row.amount) || 0,
+            payment_method: row.payment_method || "",
+          };
+
+          const { error } = await supabase.functions.invoke("create-invitation", {
+            body: payload,
+          });
+
+          if (error) throw error;
+          successCount++;
+        } catch (err) {
+          console.error("Erreur import ligne", i + 1, err);
+          errorCount++;
+        }
+        
+        setImportProgress({ current: i + 1, total: data.length });
+      }
+
+      toast.success(`Import terminé : ${successCount} succès, ${errorCount} erreurs`);
+      void load();
+    } catch (err: any) {
+      toast.error(err.message || "Erreur lors de l'importation");
+    } finally {
+      setImportProgress(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }
+
   return (
     <AdminShell>
       <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
@@ -150,9 +220,20 @@ export default function Participants() {
           <h1 className="text-3xl font-display font-bold">Participants</h1>
           <p className="text-sm text-muted-foreground">{filtered.length} résultat{filtered.length > 1 ? "s" : ""} sur {rows.length}</p>
         </div>
-        <Button asChild className="bg-gradient-gold text-accent-foreground hover:opacity-90 shadow-gold">
-          <Link to="/admin/participants/new"><Plus className="h-4 w-4 mr-2" />Nouvel invité</Link>
-        </Button>
+        <div className="flex gap-2">
+          <input type="file" accept=".csv" className="hidden" ref={fileInputRef} onChange={handleImportCsv} />
+          <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={importProgress !== null}>
+            {importProgress ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Upload className="h-4 w-4 mr-2" />}
+            {importProgress ? `${importProgress.current}/${importProgress.total}` : "Importer CSV"}
+          </Button>
+          <Button variant="outline" onClick={handleExportCsv}>
+            <Download className="h-4 w-4 mr-2" />
+            Exporter CSV
+          </Button>
+          <Button asChild className="bg-gradient-gold text-accent-foreground hover:opacity-90 shadow-gold">
+            <Link to="/admin/participants/new"><Plus className="h-4 w-4 mr-2" />Nouvel invité</Link>
+          </Button>
+        </div>
       </div>
 
       <Card className="p-4 mb-4 shadow-card space-y-4">
