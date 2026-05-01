@@ -1,3 +1,3 @@
-# Welcome to your Lovable project
+# Embassy Pass
 
 TODO: Document your project here
