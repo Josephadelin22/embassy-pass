@@ -107,6 +107,7 @@ Deno.serve(async (req) => {
         participant,
         first_scan_at: existingSameType.scanned_at,
         reason: `Déjà scanné pour : ${type === 'entree' ? 'Entrée' : 'Buffet'}`,
+        scan_type: type,
       });
     }
 

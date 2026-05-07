@@ -101,6 +101,7 @@ export type Database = {
           notes: string | null
           organization: string | null
           phone: string | null
+          passport_id: string | null
           updated_at: string
         }
         Insert: {
@@ -113,6 +114,7 @@ export type Database = {
           notes?: string | null
           organization?: string | null
           phone?: string | null
+          passport_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -125,6 +127,7 @@ export type Database = {
           notes?: string | null
           organization?: string | null
           phone?: string | null
+          passport_id?: string | null
           updated_at?: string
         }
         Relationships: []

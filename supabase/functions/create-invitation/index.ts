@@ -12,6 +12,7 @@ const BodySchema = z.object({
   phone: z.string().trim().max(40).optional().or(z.literal('')),
   category: z.enum(['vip', 'visiteur', 'exposant']),
   organization: z.string().trim().max(160).optional().or(z.literal('')),
+  passport_id: z.string().trim().max(100).optional().or(z.literal('')),
   notes: z.string().trim().max(500).optional().or(z.literal('')),
   amount: z.number().nonnegative().max(10_000_000),
   currency: z.string().trim().min(2).max(8).default('RWF'),
@@ -89,6 +90,7 @@ Deno.serve(async (req) => {
         phone: p.phone || null,
         category: p.category,
         organization: p.organization || null,
+        passport_id: p.passport_id || null,
         notes: p.notes || null,
         created_by: userData.user.id,
       })

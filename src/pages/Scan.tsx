@@ -347,7 +347,12 @@ export default function Scan() {
             {result.participant ? (
               <div className="text-center text-white/90">
                 <p className="text-3xl font-bold">{result.participant.full_name}</p>
-                <p className="text-xl mt-2 uppercase tracking-widest opacity-80">{result.participant.category}</p>
+                <div className="flex flex-col gap-1 mt-3">
+                  <p className="text-xl uppercase tracking-widest font-semibold bg-white/20 px-4 py-1 rounded-full inline-block mx-auto">
+                    {result.scan_type === 'buffet' || scanMode === 'buffet' ? 'PASS BUFFET' : 'ACCÈS ENTRÉE'}
+                  </p>
+                  <p className="text-lg opacity-80">{result.participant.category}</p>
+                </div>
               </div>
             ) : (
               <p className="text-2xl text-white/80">{result.reason ?? "QR non reconnu"}</p>

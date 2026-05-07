@@ -29,6 +29,7 @@ type Row = {
   phone: string | null;
   category: "vip" | "visiteur" | "exposant";
   organization: string | null;
+  passport_id: string | null;
   invitation: { id: string; uuid_secret: string; signature: string; status: string } | null;
 };
 
@@ -57,7 +58,7 @@ export default function Participants() {
     setLoading(true);
     const { data, error } = await supabase
       .from("participants")
-      .select("id, full_name, email, phone, category, organization, invitations(id, uuid_secret, signature, status)")
+      .select("id, full_name, email, phone, category, organization, passport_id, invitations(id, uuid_secret, signature, status)")
       .order("created_at", { ascending: false });
     if (error) toast.error(error.message);
     setRows(((data ?? []) as any[]).map((r) => ({ ...r, invitation: r.invitations?.[0] ?? null })));
@@ -314,7 +315,7 @@ export default function Participants() {
                     )}
                   </div>
                   <div className="text-xs text-muted-foreground mt-1 truncate">
-                    {[r.email, r.phone, r.organization].filter(Boolean).join(" · ") || "—"}
+                    {[r.email, r.phone, r.organization, r.passport_id ? `Passeport: ${r.passport_id}` : null].filter(Boolean).join(" · ") || "—"}
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-2 md:justify-end">

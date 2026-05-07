@@ -19,6 +19,7 @@ const Schema = z.object({
   phone: z.string().trim().max(40).optional().or(z.literal("")),
   category: z.enum(["vip", "visiteur", "exposant"]),
   organization: z.string().trim().max(160).optional().or(z.literal("")),
+  passport_id: z.string().trim().max(100).optional().or(z.literal("")),
   notes: z.string().trim().max(500).optional().or(z.literal("")),
   amount: z.coerce.number().nonnegative("Montant invalide").max(10_000_000),
   payment_method: z.string().trim().max(40).optional().or(z.literal("")),
@@ -37,6 +38,7 @@ export default function NewParticipant() {
     phone: "",
     category: "visiteur" as "vip" | "visiteur" | "exposant",
     organization: "",
+    passport_id: "",
     notes: "",
     amount: 5000,
     payment_method: "Espèces",
@@ -175,6 +177,10 @@ export default function NewParticipant() {
               <div className="space-y-2">
                 <Label>Mode paiement</Label>
                 <Input value={form.payment_method} onChange={(e) => update("payment_method", e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label>Numéro Passeport</Label>
+                <Input value={form.passport_id} onChange={(e) => update("passport_id", e.target.value)} />
               </div>
               <div className="space-y-2 sm:col-span-2">
                 <Label>Notes</Label>
