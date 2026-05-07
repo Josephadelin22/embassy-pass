@@ -172,7 +172,7 @@ export default function Scan() {
     } finally {
       setTimeout(() => setBusy(false), 600);
     }
-  }, [busy, offlineReady, queueCount]);
+  }, [busy, offlineReady, queueCount, scanMode]);
 
   const handleDecode = useCallback(async (codes: IDetectedBarcode[]) => {
     if (!codes?.length) return;
