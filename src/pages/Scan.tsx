@@ -18,6 +18,7 @@ type ScanResult = {
   participant?: { full_name: string; category: string; organization: string | null } | null;
   first_scan_at?: string | null;
   reason?: string;
+  scan_type?: string;
 };
 
 const COOLDOWN_MS = 2500;
@@ -71,6 +72,7 @@ export default function Scan() {
   const [facing, setFacing] = useState<"environment" | "user">("environment");
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<ScanResult | null>(null);
+  const [scanMode, setScanMode] = useState<"entree" | "buffet">("entree");
   const [cameraError, setCameraError] = useState<string | null>(null);
   const lastPayload = useRef<{ value: string; ts: number } | null>(null);
   const [offlineReady, setOfflineReady] = useState(false);
@@ -131,21 +133,25 @@ export default function Scan() {
     try {
       // Offline first verification
       if (offlineReady || queueCount > 0) {
-        const local = await verifyScanOffline(payload);
+        const local = await verifyScanOffline(payload, scanMode);
         if (local.valid && local.invitation) {
-          if (local.status === "utilise") {
-            setResult({ status: "duplicate", participant: local.invitation.participant });
+          if (local.status === "revoque") {
+            setResult({ status: "revoked", participant: local.invitation.participant });
+            feedback("revoked");
+          } else if (local.alreadyScanned) {
+            setResult({ 
+              status: "duplicate", 
+              participant: local.invitation.participant,
+              reason: `Déjà scanné pour : ${scanMode === 'entree' ? 'Entrée' : 'Buffet'}`
+            });
             feedback("duplicate");
-          } else if (local.status === "actif") {
-            await queueScanOffline(local.invitation.id);
+          } else {
+            await queueScanOffline(local.invitation.id, scanMode);
             setQueueCount(c => c + 1);
             setResult({ status: "valid", participant: local.invitation.participant });
             feedback("valid");
             // Try background sync if online
             if (navigator.onLine) handleSync();
-          } else {
-            setResult({ status: "revoked", participant: local.invitation.participant });
-            feedback("revoked");
           }
           return;
         }
@@ -153,7 +159,7 @@ export default function Scan() {
 
       // Fallback to API
       const { data, error } = await supabase.functions.invoke("validate-scan", {
-        body: { payload, device_info: navigator.userAgent },
+        body: { payload, device_info: navigator.userAgent, type: scanMode },
       });
       if (error) throw error;
       const r = data as ScanResult;
@@ -228,6 +234,24 @@ export default function Scan() {
           <div>
             <h1 className="text-xl sm:text-2xl font-display font-bold">Scanner QR</h1>
             <p className="text-xs text-muted-foreground">Pointez la caméra vers le badge invité</p>
+          </div>
+          <div className="flex bg-muted p-1 rounded-lg">
+            <Button
+              variant={scanMode === "entree" ? "default" : "ghost"}
+              size="sm"
+              className="h-8 text-xs px-3"
+              onClick={() => setScanMode("entree")}
+            >
+              Entrée
+            </Button>
+            <Button
+              variant={scanMode === "buffet" ? "default" : "ghost"}
+              size="sm"
+              className="h-8 text-xs px-3"
+              onClick={() => setScanMode("buffet")}
+            >
+              Buffet
+            </Button>
           </div>
           <div className="flex gap-1">
             <Button variant="outline" size="icon" onClick={() => setFacing(f => f === "environment" ? "user" : "environment")} title="Changer de caméra">

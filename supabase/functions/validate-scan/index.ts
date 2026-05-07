@@ -55,6 +55,7 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const payload: string = (body?.payload ?? '').toString().trim();
     const device_info: string | null = body?.device_info ?? null;
+    const type: string = (body?.type ?? 'entree').toString().trim();
 
     if (!payload || !payload.includes('.')) {
       return json(200, { status: 'invalid', reason: 'payload_format' });
@@ -88,17 +89,25 @@ Deno.serve(async (req) => {
       .eq('id', inv.participant_id)
       .maybeSingle();
 
-    // Existing check-ins
-    const { data: existing } = await admin
+    // Check if THIS type of scan already exists
+    const { data: existingSameType } = await admin
       .from('check_ins')
       .select('scanned_at')
       .eq('invitation_id', inv.id)
-      .order('scanned_at', { ascending: true });
-
-    const firstScan = existing?.[0]?.scanned_at ?? null;
+      .eq('check_in_type', type)
+      .maybeSingle();
 
     if (inv.status === 'revoque') {
-      return json(200, { status: 'revoked', participant, first_scan_at: firstScan });
+      return json(200, { status: 'revoked', participant });
+    }
+
+    if (existingSameType) {
+      return json(200, {
+        status: 'duplicate',
+        participant,
+        first_scan_at: existingSameType.scanned_at,
+        reason: `Déjà scanné pour : ${type === 'entree' ? 'Entrée' : 'Buffet'}`,
+      });
     }
 
     // Always log the scan attempt
@@ -106,23 +115,18 @@ Deno.serve(async (req) => {
       invitation_id: inv.id,
       agent_id: userData.user.id,
       device_info,
+      check_in_type: type,
     });
 
-    if (firstScan || inv.status === 'utilise' || inv.used_at) {
-      return json(200, {
-        status: 'duplicate',
-        participant,
-        first_scan_at: firstScan ?? inv.used_at,
-      });
+    // Mark as used (present) if it's the first scan of any kind
+    if (inv.status !== 'utilise') {
+      await admin
+        .from('invitations')
+        .update({ status: 'utilise', used_at: new Date().toISOString() })
+        .eq('id', inv.id);
     }
 
-    // Mark as used
-    await admin
-      .from('invitations')
-      .update({ status: 'utilise', used_at: new Date().toISOString() })
-      .eq('id', inv.id);
-
-    return json(200, { status: 'valid', participant, first_scan_at: null });
+    return json(200, { status: 'valid', participant, scan_type: type });
   } catch (e) {
     console.error('validate-scan error', e);
     const msg = e instanceof Error ? e.message : 'unknown';

@@ -9,12 +9,15 @@ export type OfflineInvitation = {
   participant: {
     full_name: string;
     category: string;
+    organization: string | null;
   };
+  scanned_types?: string[];
 };
 
 export type QueuedScan = {
   invitation_id: string;
   scanned_at: string;
+  type: string;
 };
 
 // Configurer localforage
@@ -29,7 +32,7 @@ const QUEUE_KEY = "scans_queue";
 export async function preloadData() {
   const { data, error } = await supabase
     .from("invitations")
-    .select("id, uuid_secret, signature, status, participants(full_name, category)");
+    .select("id, uuid_secret, signature, status, participants(full_name, category, organization)");
 
   if (error) throw error;
 
@@ -41,6 +44,7 @@ export async function preloadData() {
     participant: {
       full_name: row.participants?.full_name || "Inconnu",
       category: row.participants?.category || "visiteur",
+      organization: row.participants?.organization || null,
     },
   }));
 
@@ -48,7 +52,7 @@ export async function preloadData() {
   return mapped.length;
 }
 
-export async function verifyScanOffline(qrPayload: string): Promise<{ valid: boolean; status?: string; invitation?: OfflineInvitation }> {
+export async function verifyScanOffline(qrPayload: string, type: string): Promise<{ valid: boolean; alreadyScanned?: boolean; status?: string; invitation?: OfflineInvitation }> {
   const invitations = await localforage.getItem<OfflineInvitation[]>(INVITATIONS_KEY) || [];
   
   const [uuid, signature] = qrPayload.split(".");
@@ -56,20 +60,27 @@ export async function verifyScanOffline(qrPayload: string): Promise<{ valid: boo
 
   if (!inv) return { valid: false };
 
-  return { valid: true, status: inv.status, invitation: inv };
+  const alreadyScanned = (inv.scanned_types || []).includes(type);
+
+  return { valid: true, alreadyScanned, status: inv.status, invitation: inv };
 }
 
-export async function queueScanOffline(invitationId: string) {
+export async function queueScanOffline(invitationId: string, type: string) {
   // 1. Ajouter à la queue
   const queue = await localforage.getItem<QueuedScan[]>(QUEUE_KEY) || [];
-  queue.push({ invitation_id: invitationId, scanned_at: new Date().toISOString() });
+  queue.push({ invitation_id: invitationId, scanned_at: new Date().toISOString(), type });
   await localforage.setItem(QUEUE_KEY, queue);
 
-  // 2. Mettre à jour le cache local pour éviter le double scan offline
+  // 2. Mettre à jour le cache local pour éviter le double scan offline du même type
   const invitations = await localforage.getItem<OfflineInvitation[]>(INVITATIONS_KEY) || [];
-  const updated = invitations.map((inv) => 
-    inv.id === invitationId ? { ...inv, status: "utilise" } : inv
-  );
+  const updated = invitations.map((inv) => {
+    if (inv.id === invitationId) {
+      const types = inv.scanned_types || [];
+      if (!types.includes(type)) types.push(type);
+      return { ...inv, scanned_types: types };
+    }
+    return inv;
+  });
   await localforage.setItem(INVITATIONS_KEY, updated);
 }
 
@@ -104,6 +115,7 @@ export async function syncQueue(): Promise<number> {
           agent_id: userData?.user?.id,
           scanned_at: scan.scanned_at,
           device_info: "Offline Sync",
+          check_in_type: scan.type,
         });
 
       if (err2 && err2.code !== '23505') { // Ignore unique constraint if any

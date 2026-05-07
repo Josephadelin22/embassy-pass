@@ -21,6 +21,7 @@ export type Database = {
           id: string
           invitation_id: string
           scanned_at: string
+          check_in_type: string | null
         }
         Insert: {
           agent_id?: string | null
@@ -28,6 +29,7 @@ export type Database = {
           id?: string
           invitation_id: string
           scanned_at?: string
+          check_in_type?: string | null
         }
         Update: {
           agent_id?: string | null
@@ -35,6 +37,7 @@ export type Database = {
           id?: string
           invitation_id?: string
           scanned_at?: string
+          check_in_type?: string | null
         }
         Relationships: [
           {

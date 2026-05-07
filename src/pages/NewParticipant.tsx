@@ -24,7 +24,7 @@ const Schema = z.object({
   payment_method: z.string().trim().max(40).optional().or(z.literal("")),
 });
 
-const presets = { vip: 0, visiteur: 5000, exposant: 3000 };
+const presets = { vip: 0, visiteur: 5000, exposant: 8000 };
 
 export default function NewParticipant() {
   const nav = useNavigate();
@@ -159,7 +159,7 @@ export default function NewParticipant() {
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="vip">VIP — Gratuit</SelectItem>
-                    <SelectItem value="exposant">Exposant — 3 000 RWF</SelectItem>
+                    <SelectItem value="exposant">Exposant — 8 000 RWF</SelectItem>
                     <SelectItem value="visiteur">Visiteur — 5 000 RWF</SelectItem>
                   </SelectContent>
                 </Select>
