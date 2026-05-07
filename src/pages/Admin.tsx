@@ -40,6 +40,22 @@ export default function Admin() {
   const [loading, setLoading] = useState(true);
   const [regenerating, setRegenerating] = useState(false);
   const [qrHistory, setQrHistory] = useState<RegenerationBatch[]>([]);
+  const [resetting, setResetting] = useState(false);
+
+  async function resetSystem() {
+    setResetting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("reset-system");
+      if (error) throw error;
+      toast.success("Système réinitialisé à zéro");
+      await load();
+      await loadQrHistory();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Erreur lors de la réinitialisation");
+    } finally {
+      setResetting(false);
+    }
+  }
 
   async function regenerateAll() {
     setRegenerating(true);
@@ -205,6 +221,39 @@ export default function Admin() {
               <AlertDialogFooter>
                 <AlertDialogCancel>Annuler</AlertDialogCancel>
                 <AlertDialogAction onClick={regenerateAll}>Confirmer</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
+      </Card>
+
+      <Card className="p-6 shadow-card border-border/60 mt-4 bg-destructive/5">
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <div>
+            <h3 className="font-display font-bold text-lg text-destructive">Réinitialisation complète</h3>
+            <p className="text-sm text-muted-foreground">
+              Supprime TOUS les participants, invitations et scans. Cette opération est irréversible.
+            </p>
+          </div>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="destructive" disabled={resetting}>
+                <RefreshCw className={cn("h-4 w-4 mr-2", resetting && "animate-spin")} />
+                {resetting ? "Réinitialisation..." : "Réinitialiser le système"}
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle className="text-destructive">ATTENTION : Réinitialisation totale</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Êtes-vous ABSOLUMENT sûr ? Cette action va supprimer tous les invités, tous les scans effectués et toutes les transactions. Il n'y a aucun moyen de revenir en arrière.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Annuler</AlertDialogCancel>
+                <AlertDialogAction onClick={resetSystem} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                  Confirmer la suppression totale
+                </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
